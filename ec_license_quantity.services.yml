@@ -1,0 +1,14 @@
+services:
+  ec_license_quantity.order_processor.license:
+    class: Drupal\ec_license_quantity\LicenseOrderProcessorDecorator
+    decorates: commerce_license.multiple_license_order_processor
+    decoration_priority: 100
+    arguments:
+      - '@ec_license_quantity.order_processor.license.inner'
+      - '@messenger'
+  ec_license_quantity.quantity_response_subscriber:
+    class: Drupal\ec_license_quantity\EventSubscriber\QuantityResponseSubscriber
+    arguments:
+      - '@messenger'
+    tags:
+      - { name: event_subscriber }

@@ -1,0 +1,77 @@
+<?php
+
+/**
+ * @file
+ * Allows quantity > 1 for licensed products.
+ */
+
+use Drupal\commerce_order\Entity\OrderItemInterface;
+use Drupal\commerce_product\Entity\ProductVariation;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Static cache for original quantities.
+ */
+function &ec_license_quantity_get_cache(): array {
+  static $cache = [];
+  return $cache;
+}
+
+/**
+ * Static cache for purchased entity.
+ */
+function &ec_license_quantity_entity_cache(): ProductVariation|null {
+  static $entity = NULL;
+  return $entity;
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave() for commerce_order_item.
+ */
+function ec_license_quantity_commerce_order_item_presave(OrderItemInterface $order_item): void {
+  $cache = &ec_license_quantity_get_cache();
+  $item_id = $order_item->id();
+  if (!$item_id) {
+    return;
+  }
+
+  $current_qty = $order_item->getQuantity();
+  // Check if quantity was forcefully reduced to 1 by License processor.
+  if (isset($cache[$item_id])) {
+    $previous_qty = $cache[$item_id];
+
+    // If previous was > 1 but now is 1, restore it.
+    if ($previous_qty > 1 && $current_qty == 1) {
+      $order_item->setQuantity($previous_qty);
+      // Don't update cache.
+      return;
+    }
+  }
+
+  // Always update cache with current quantity.
+  $cache[$item_id] = $current_qty;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for views_form_commerce_cart_form_default.
+ */
+function ec_license_quantity_form_views_form_commerce_cart_form_default_alter(&$form, FormStateInterface $form_state, $form_id): void {
+  // Ensure quantity field is editable for all items.
+  if (isset($form['output'])) {
+    foreach ($form['output'] as $key => &$item) {
+      if (is_numeric($key) && isset($item['quantity'])) {
+        // Force enable quantity field
+        $item['quantity']['#disabled'] = FALSE;
+        $item['quantity']['#access'] = TRUE;
+
+        // Remove restrictions
+        if (isset($item['quantity']['#attributes']['max'])) {
+          unset($item['quantity']['#attributes']['max']);
+        }
+        if (isset($item['quantity']['#attributes']['min'])) {
+          $item['quantity']['#attributes']['min'] = 1;
+        }
+      }
+    }
+  }
+}

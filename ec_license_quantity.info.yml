@@ -1,0 +1,9 @@
+name: 'License Quantity Override'
+type: module
+description: 'Allows quantity > 1 for licensed products in Commerce License'
+core_version_requirement: ^10 || ^11
+package: 'Commerce'
+
+dependencies:
+  - commerce:commerce_license
+  - commerce:commerce_order
